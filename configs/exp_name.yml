@@ -1,0 +1,25 @@
+dataset: 
+  train_csv: '/home/nhandc1/work/diarization/train_cisco_8k.csv'
+  val_csv: '/home/nhandc1/work/diarization/val_cisco_8k.csv'
+  test_csv: '/home/nhandc1/work/diarization/test_cisco_8k.csv'
+  max_time: 60
+  sr: 8000
+  feature_dim: 23
+  input_transform: 'logmel'
+  subsampling: 5
+  context_size: 7
+  workers: 4
+  batch_size: 8
+  max_speaker_in_training: 2
+model:
+  n_units: 256
+  e_units: 2048
+  n_heads: 4
+  n_layers: 4
+  dropout: 0.1
+  attractor_loss_ratio: 1.
+  attractor_encoder_dropout: 0.
+  attractor_decoder_dropout: 0.
+  detach_attractor_loss: False
+  time_shuffle: True
+noam_warmup_steps: 100000
