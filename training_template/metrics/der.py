@@ -2,7 +2,7 @@ from typing import Dict
 import torch
 
 
-def calc_diarization_error(pred, label,max_speaker=None, label_delay=0, threshold=0.5):
+def calc_diarization_error(pred, label, max_speaker=None, label_delay=0, threshold=0.5):
     """
     Calculates diarization error stats for reporting.
     Args:

@@ -10,10 +10,11 @@ class DiarizationDataSet(Dataset):
     '''
         Not implemented cropping a random segment yet
     '''
-    def __init__(self, pandas_df, config, is_train=True):
+    def __init__(self, pandas_df, config, logger=None, is_train=True):
         self.is_train = is_train
         self.config = config
         self.pandas_df = pandas_df
+        self.logger = logger
         self.path_wavs = self.pandas_df.groupby("path_wav")['path_wav'].first().values
 
 
@@ -36,18 +37,23 @@ class DiarizationDataSet(Dataset):
                 if len(set(speakers)) == 0:
                     print("total speaker = 0",utt)
                 length = int(self.config.max_time * sr)
-                start = 0
+                start = np.random.randint(0, end - length + 1)
                 end = start + length 
-                y=y[start : end]
-            else:
-                end = y.shape[0]
                 y = y[start : end]
-        Y,T = get_labeledSTFT(
+
+                start = np.rint(start / self.config.frame_shift).astype(int)
+                end = np.rint(end / self.config.frame_shift).astype(int)
+            else:
+                y = y[start : end]
+                start = np.rint(start / self.config.frame_shift).astype(int)
+                end = np.rint(end / self.config.frame_shift).astype(int)
+
+        Y, T = get_labeledSTFT(
             (y, sr, starts, ends, speakers),
             start,
             end,
-            frame_shift=int(0.01*sr),
-            frame_size=int(0.025*sr),
+            frame_shift=self.config.frame_shift,
+            frame_size=self.config.frame_size,
         )
 
         Y = transform(
@@ -60,29 +66,32 @@ class DiarizationDataSet(Dataset):
             if T_ss[:,i].sum() > 0:
                 is_spk.append(i)
         if len(is_spk) == 0:
-            print("mixture has 0 spk active") 
+            pass
+            # Could cause deadlock
+            # self.logger.experiment.add_text('0 speaker', utt)
         else:
             T_ss = T_ss[:,is_spk]
         return torch.from_numpy(np.copy(Y_ss)), torch.from_numpy(np.copy(T_ss))
 
 
 class DiarizationDataModule(LightningDataModule):
-    def __init__(self, config):
+    def __init__(self, config, logger=None):
         '''
             Initialize your variables
             Note: Specify your arguments' datatype for a comprehensive code
         '''
         super().__init__()
         self.config = config
+        self.logger = logger
 
 
     def setup(self, stage: str):
         train_df = pd.read_csv(self.config.train_csv)
         val_df = pd.read_csv(self.config.val_csv)
         test_df = pd.read_csv(self.config.test_csv)
-        self.train_ds = DiarizationDataSet(train_df, self.config, is_train=True)
-        self.val_ds = DiarizationDataSet(val_df, self.config, is_train=False)
-        self.test_ds = DiarizationDataSet(test_df, self.config, is_train=False)
+        self.train_ds = DiarizationDataSet(train_df, self.config, logger=self.logger, is_train=True)
+        self.val_ds = DiarizationDataSet(val_df, self.config, logger=self.logger, is_train=False)
+        self.test_ds = DiarizationDataSet(test_df, self.config, logger=self.logger, is_train=False)
 
 
     def train_dataloader(self) -> DataLoader:
@@ -99,7 +108,7 @@ class DiarizationDataModule(LightningDataModule):
     def val_dataloader(self) -> DataLoader:
         return DataLoader(
             self.val_ds,
-            batch_size=self.config.batch_size,
+            batch_size=1,
             shuffle=False,
             num_workers=self.config.workers,
             persistent_workers=True,
@@ -110,7 +119,7 @@ class DiarizationDataModule(LightningDataModule):
     def test_dataloader(self) -> DataLoader:
         return DataLoader(
             self.test_ds,
-            batch_size=self.config.batch_size,
+            batch_size=1,
             shuffle=False,
             num_workers=self.config.workers,
             persistent_workers=True,

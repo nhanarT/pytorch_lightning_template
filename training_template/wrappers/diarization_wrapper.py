@@ -12,6 +12,7 @@ class DiarizationWrapper(LightningModule):
             in_size = config.dataset.feature_dim*(1+2*config.dataset.context_size),
             **config.model
         )
+        self.oom_counter = 0
 
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -29,14 +30,31 @@ class DiarizationWrapper(LightningModule):
 
 
     def validation_step(self, batch, batch_idx):
-        features = batch['xs']
-        labels = batch['ts']
-        features, labels = pad_sequence(features, labels)
-        features = torch.stack(features)
-        loss, acum_val_metrics = compute_loss_and_metrics(self.model, labels, features, return_metrics=True)
-        self.log('val/loss', loss, on_epoch=True, batch_size=features.size(0), logger=True, prog_bar=True)
-        acum_val_metrics = {f'val/{k}': torch.Tensor(v).mean() for k, v in acum_val_metrics.items()}
-        self.log_dict(acum_val_metrics, on_step=False, on_epoch=True, batch_size=features.size(0), logger=True, prog_bar=False)
+        try:
+            features = batch['xs']
+            labels = batch['ts']
+            features, labels = pad_sequence(features, labels)
+            features = torch.stack(features)
+            loss, acum_val_metrics = compute_loss_and_metrics(self.model, labels, features, return_metrics=True)
+            self.log('val/loss', loss, on_epoch=True, batch_size=features.size(0), logger=True, prog_bar=True)
+            acum_val_metrics = {f'val/{k}': torch.Tensor(v).mean() for k, v in acum_val_metrics.items()}
+            self.log_dict(acum_val_metrics, on_step=False, on_epoch=True, batch_size=features.size(0), logger=True, prog_bar=False)
+        except torch.cuda.OutOfMemoryError as err:
+            self.logger.experiment.add_text('OOM Err:', str(err))
+
+
+    def test_step(self, batch, batch_idx):
+        try:
+            features = batch['xs']
+            labels = batch['ts']
+            features, labels = pad_sequence(features, labels)
+            features = torch.stack(features)
+            loss, acum_test_metrics = compute_loss_and_metrics(self.model, labels, features, return_metrics=True)
+            acum_test_metrics = {k: torch.Tensor(v).mean() for k, v in acum_test_metrics.items()}
+            self.log_dict(acum_test_metrics, on_step=False, on_epoch=True, batch_size=features.size(0), logger=True, prog_bar=False)
+        except torch.cuda.OutOfMemoryError as err:
+            self.oom_counter += 1
+            self.log('OOM_counter', self.oom_counter, on_step=True, logger=False, prog_bar=True)
 
 
     def configure_optimizers(self):

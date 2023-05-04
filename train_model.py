@@ -27,6 +27,7 @@ def main(config):
     # Checkpoint storage
     checkpoint_root = os.path.join(os.path.dirname(__file__), 'checkpoints')
     os.makedirs(checkpoint_root, exist_ok=True)
+    tensorboard_version_name = 'tensorboard'
     if config.resume is None:
         now = datetime.strftime(datetime.now(), "%d-%m-%Y-%H-%M-%S")
         checkpoint_name = f'checkpoint_{now}'
@@ -38,10 +39,10 @@ def main(config):
         checkpoint_name = os.path.basename(checkpoint_dir)
 
     # Logger setting
-    logger = TensorBoardLogger(checkpoint_root, checkpoint_name)
+    logger = TensorBoardLogger(checkpoint_root, checkpoint_name, version=tensorboard_version_name)
 
     # Start training
-    data = DiarizationDataModule(config.dataset)
+    data = DiarizationDataModule(config.dataset, logger=logger)
     model = DiarizationWrapper(config)
     trainer = pl.Trainer(
         logger=logger,
@@ -52,7 +53,7 @@ def main(config):
             EarlyStopping(
                 monitor='val/DER',
                 min_delta=0.01,
-                patience=3,
+                patience=10,
                 mode='min'
             ),
             LearningRateMonitor('step'),
@@ -79,10 +80,14 @@ def main(config):
             ),
         ],
         max_epochs=200,
-        num_sanity_val_steps=5,
+        num_sanity_val_steps=0,
+        log_every_n_steps=1,
     )   
 
-    trainer.fit(model, data)
+    if config.resume:
+        trainer.fit(model, data, ckpt_path=config.resume)
+    else:
+        trainer.fit(model, data)
 
 # Check if config path exists
 def configuration(path):
@@ -92,7 +97,7 @@ def configuration(path):
 
 # Check if is checkpoint file
 def checkpoint_type(path):
-    if (os.path.splitext(path)[1] in ['.pth', '.pt']):
+    if (os.path.splitext(path)[1] in ['.ckpt']):
         return path
     raise ValueError(f'{path} is not a checkpoint file')
 
