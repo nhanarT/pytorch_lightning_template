@@ -4,7 +4,7 @@ from pytorch_lightning import LightningModule
 from ..models.eda_e2e import TransformerEDADiarization
 from ..utils.diarization import pad_sequence, compute_loss_and_metrics
 
-class DiarizationWrapper(LightningModule):
+class Diar_Wrapper(LightningModule):
     def __init__(self, config):
         super().__init__()
         self.config = config

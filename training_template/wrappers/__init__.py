@@ -1,1 +1,3 @@
-from . import diarization_wrapper
+from . import told_wrapper
+from . import wrapper_template
+from . import diar_wrapper

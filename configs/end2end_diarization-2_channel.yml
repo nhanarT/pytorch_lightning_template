@@ -1,7 +1,9 @@
+datamodule: Diar_Data_Module
+wrapper: Diar_Wrapper
 dataset: 
-  train_csv: '/home/nhandc1/work/diarization/train_cisco_8k.csv'
-  val_csv: '/home/nhandc1/work/diarization/val_cisco_8k.csv'
-  test_csv: '/home/nhandc1/work/diarization/test_cisco_8k.csv'
+  train_csv: '/home/nhandc1/work/diarization/2channel_db/train_2channel.csv'
+  val_csv: '/home/nhandc1/work/diarization/2channel_db/val_2channel.csv'
+  test_csv: '/home/nhandc1/work/diarization/2channel_db/test_2channel.csv'
   max_time: 60
   sr: 8000
   feature_dim: 23
@@ -11,6 +13,8 @@ dataset:
   workers: 4
   batch_size: 8
   max_speaker_in_training: 2
+  frame_shift: 80
+  frame_size: 200
 model:
   n_units: 256
   e_units: 2048
@@ -22,4 +26,3 @@ model:
   attractor_decoder_dropout: 0.
   detach_attractor_loss: False
   time_shuffle: True
-noam_warmup_steps: 100000

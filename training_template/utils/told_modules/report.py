@@ -2,7 +2,6 @@ import copy
 import numpy as np
 import time
 import torch
-from eend.utils.power import create_powerlabel
 from itertools import combinations
 
 metrics = [
@@ -105,30 +104,21 @@ class PowerReporter():
         with torch.no_grad():
             loss_s = 0.
             uidx = 0
-            for xs, ts, orders in data_loader:
+            for xs, xls, ts, tls, n_spks in data_loader:
                 xs = [x.to(device) for x in xs]
+                xls = [xl.to(device) for xl in xls]
                 ts = [t.to(device) for t in ts]
-                orders = [o.to(device) for o in orders]
-                loss, pit_loss, mpit_loss, att_loss, ys, logits, labels, attractors = model(xs, ts, orders)
+                tls = [tl.to(device) for tl in tls]
+                n_spks = [n_spk.to(device) for n_spk in n_spks]
+                loss, preds, labels, label_lens = model(xs, xls, ts, tls, n_spks)
                 loss_s += loss.item()
                 uidx += 1
 
-                for logit, t, att in zip(logits, labels, attractors):
-                    pred = torch.argmax(torch.softmax(logit, dim=-1), dim=-1)  # (T, )
-                    oov_index = torch.where(pred == self.mapping_dict['oov'])[0]
-                    for i in oov_index:
-                        if i > 0:
-                            pred[i] = pred[i - 1]
-                        else:
-                            pred[i] = 0
-                    pred = [self.inv_mapping_func(i, self.mapping_dict) for i in pred]
-                    decisions = [bin(num)[2:].zfill(self.max_n_speaker)[::-1] for num in pred]
-                    decisions = torch.from_numpy(
-                        np.stack([np.array([int(i) for i in dec]) for dec in decisions], axis=0)).to(att.device).to(
-                        torch.float32)
-                    decisions = decisions[:, :att.shape[0]]
+                for pred, label, label_len in zip(preds, labels, label_lens):
+                    pred = pred[:label_len]
+                    label = label[:label_len]
 
-                    stats = self.calc_diarization_error(decisions, t)
+                    stats = self.calc_diarization_error(pred, label)
                     res['speaker_scored'] += stats['speaker_scored']
                     res['speech_scored'] += stats['speech_scored']
                     res['frames'] += stats['frames']
@@ -153,7 +143,25 @@ class PowerReporter():
         n_map = torch.sum(((label == 1) & (decisions == 1)), dim=-1).to(torch.float32)
         res['speaker_error'] = torch.sum(torch.min(n_ref, n_sys) - n_map)
         res['correct'] = torch.sum(label == decisions) / label.shape[1]
-        res['diarization_error'] = (
-                res['speaker_miss'] + res['speaker_falarm'] + res['speaker_error'])
+        res['diarization_error'] = (res['speaker_miss'] + res['speaker_falarm'] + res['speaker_error'])
         res['frames'] = len(label)
         return res
+
+def log(name, x):
+    print('-'*50)
+    print(name)
+    print('Type:', type(x))
+    print('Data:', x)
+    try:
+        print('Shape:', x.shape)
+        print('-'*50)
+        return
+    except:
+        pass
+    try:
+        print('Len:', len(x))
+        print('-'*50)
+        return
+    except:
+        pass
+

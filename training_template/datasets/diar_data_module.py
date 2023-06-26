@@ -6,7 +6,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from pytorch_lightning import LightningDataModule
 
-class DiarizationDataSet(Dataset):
+class Diar_Dataset(Dataset):
     '''
         Not implemented cropping a random segment yet
     '''
@@ -74,7 +74,7 @@ class DiarizationDataSet(Dataset):
         return torch.from_numpy(np.copy(Y_ss)), torch.from_numpy(np.copy(T_ss))
 
 
-class DiarizationDataModule(LightningDataModule):
+class Diar_Data_Module(LightningDataModule):
     def __init__(self, config, logger=None):
         '''
             Initialize your variables
@@ -89,9 +89,9 @@ class DiarizationDataModule(LightningDataModule):
         train_df = pd.read_csv(self.config.train_csv)
         val_df = pd.read_csv(self.config.val_csv)
         test_df = pd.read_csv(self.config.test_csv)
-        self.train_ds = DiarizationDataSet(train_df, self.config, logger=self.logger, is_train=True)
-        self.val_ds = DiarizationDataSet(val_df, self.config, logger=self.logger, is_train=False)
-        self.test_ds = DiarizationDataSet(test_df, self.config, logger=self.logger, is_train=False)
+        self.train_ds = Diar_Dataset(train_df, self.config, logger=self.logger, is_train=True)
+        self.val_ds = Diar_Dataset(val_df, self.config, logger=self.logger, is_train=False)
+        self.test_ds = Diar_Dataset(test_df, self.config, logger=self.logger, is_train=False)
 
 
     def train_dataloader(self) -> DataLoader:

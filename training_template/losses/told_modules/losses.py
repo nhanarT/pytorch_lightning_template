@@ -16,7 +16,14 @@ def standard_loss(ys, ts, label_delay=0):
 def batch_pit_n_speaker_loss(ys, ts, n_speakers_list):
     max_n_speakers = ts[0].shape[1]
     olens = [y.shape[0] for y in ys]
-    ys = nn.utils.rnn.pad_sequence(ys, batch_first=True, padding_value=-1)
+    try:
+        ys = nn.utils.rnn.pad_sequence(ys, batch_first=True, padding_value=-1)
+    except BaseException as err:
+        print(ys)
+        for tmp in ys:
+            print(tmp)
+            print(tmp.shape)
+        raise err
     ys_mask = [torch.ones(olen).to(ys.device) for olen in olens]
     ys_mask = torch.nn.utils.rnn.pad_sequence(ys_mask, batch_first=True, padding_value=0).unsqueeze(-1)
 
@@ -61,7 +68,8 @@ def batch_pit_n_speaker_loss(ys, ts, n_speakers_list):
     min_loss = min_loss / n_frames
 
     min_indices = torch.argmin(losses_perm, dim=1)
-    labels_perm = [t[:, perms[idx].to(torch.long)] for t, idx in zip(ts, min_indices)]
+    perms_idx = torch.stack([perms[idx].to(torch.long) for idx in min_indices])
+    labels_perm = [t[:, p] for t, p in zip(ts, perms_idx)]
     labels_perm = [t[:, :n_speakers] for t, n_speakers in zip(labels_perm, n_speakers_list)]
 
-    return min_loss, labels_perm
+    return min_loss, labels_perm, perms_idx

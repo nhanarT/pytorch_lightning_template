@@ -218,7 +218,7 @@ class TransformerEDADiarization(Module):
                 torch.stack([e[order] for e, order in zip(emb, orders)]),
                 n_speakers)
         else:
-            attractor_loss, attractors,acc_spk,spk_predict = self.eda(emb, n_speakers)
+            attractor_loss, attractors, acc_spk, spk_predict = self.eda(emb, n_speakers)
 
         # ys: [(T, C), ...]
         # ys: bs, time, channel

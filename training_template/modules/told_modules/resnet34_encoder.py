@@ -1,11 +1,12 @@
+import logging
+from collections import OrderedDict
+from typing import Tuple, Optional
+
+import numpy as np
 import torch
 from torch.nn import functional as F
-from funasr.models.encoder.abs_encoder import AbsEncoder
-from typing import Tuple, Optional
-from funasr.models.pooling.statistic_pooling import statistic_pooling, windowed_statistic_pooling
-from collections import OrderedDict
-import logging
-import numpy as np
+
+from .statistic_pooling import statistic_pooling, windowed_statistic_pooling
 
 
 class BasicLayer(torch.nn.Module):
@@ -76,7 +77,7 @@ class BasicBlock(torch.nn.Module):
         return xs_pad, ilens
 
 
-class ResNet34(AbsEncoder):
+class ResNet34(torch.nn.Module):
     def __init__(
             self,
             input_size,
@@ -157,7 +158,7 @@ class ResNet34(AbsEncoder):
 
 # Note: For training, this implement is not equivalent to tf because of the kernel_regularizer in tf.layers.
 # TODO: implement kernel_regularizer in torch with munal loss addition or weigth_decay in the optimizer
-class ResNet34_SP_L2Reg(AbsEncoder):
+class ResNet34_SP_L2Reg(torch.nn.Module):
     def __init__(
             self,
             input_size,
@@ -692,23 +693,12 @@ class ResNet34SpL2RegDiar(ResNet34_SP_L2Reg):
             features = statistic_pooling(res_out, ilens, (2, ))
         else:
             features, ilens = windowed_statistic_pooling(res_out, ilens, (2, ), self.pool_size, self.stride)
-        features = features.transpose(1, 2)
+            features = features.transpose(1, 2)
+
         endpoints["pooling"] = features
 
         features = self.resnet1_dense(features)
         endpoints["resnet1_dense"] = features
-        features = F.relu(features)
-        endpoints["resnet1_relu"] = features
-        features = self.resnet1_bn(features.transpose(1, 2)).transpose(1, 2)
-        endpoints["resnet1_bn"] = features
-
-        features = self.resnet2_dense(features)
-        endpoints["resnet2_dense"] = features
-        features = F.relu(features)
-        endpoints["resnet2_relu"] = features
-        features = self.resnet2_bn(features.transpose(1, 2)).transpose(1, 2)
-        endpoints["resnet2_bn"] = features
-
         return endpoints[self.embedding_node], ilens, None
 
     def gen_tf2torch_map_dict(self):

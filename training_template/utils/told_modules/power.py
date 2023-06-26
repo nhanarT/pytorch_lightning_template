@@ -69,10 +69,10 @@ def dec_trans(x, max_speaker_num, mapping_dict):
 def create_powerlabel(label, mapping_dict, max_speaker_num=6, max_olp_speaker_num=3):
     T, C = label.shape
     padding_label = np.zeros((T, max_speaker_num))
-    padding_label[:, :C] = label
+    padding_label[:, :C] = label.cpu()
     out_label = dec_trans(padding_label, max_speaker_num, mapping_dict)
     out_label = torch.from_numpy(out_label)
-    return out_label
+    return out_label.to(label.device)
 
 
 def generate_perm_pse(label, n_speaker, mapping_dict, max_speaker_num, max_olp_speaker_num=3):

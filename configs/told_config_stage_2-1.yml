@@ -1,0 +1,87 @@
+datamodule: 'TOLD_Diar_DataModule'
+wrapper: 'TOLD_Wrapper'
+max_epoch: 50
+exp_name: 'stage2_1'
+# ------------------------
+dataset:
+  train_csv: '2_channel_db/train_2channel.csv'
+  val_csv: '2_channel_db/val_2channel.csv'
+  test_csv: '2_channel_db/test_2channel.csv'
+  batch_size: 16
+  workers: 4
+  sr: 8000
+  max_time: 60
+  frame_shift: 80
+  frame_size: 200
+  max_n_speaker: 2
+# ------------------------
+model:
+  lr: 1e-4
+  stage: 2
+  sr: 8000
+  max_n_speaker: 2
+  max_olp_speaker: 2
+  freeze:
+    - 'profile_extractor'
+    - 'soap.soap_encoder'
+  load:
+    profile_extractor: 'pretrained_modules/resnet34_sp_l2reg.pth'
+    soap.soap_encoder: 'pretrained_modules/resnet34_sp_l2reg.pth'
+# ------------------------
+  frontend:
+    n_mels: 80
+    context_size: 0
+    subsampling: 1
+
+  context_frontend:
+    n_mels: 23
+    context_size: 7
+    subsampling: 10
+
+  frame_length: 25 # ms
+  frame_shift: 10 # ms
+
+  profile_extractor_conf:
+    pooling_type: "frame_gsp"
+# ------------------------
+  e2e_ola:
+
+    encoder_conf:
+      idim: 345
+      n_layers: 4
+      n_units: 256
+      e_units: 2048
+      h: 4
+      dropout_rate: 0.1
+      use_pos_emb: false
+
+    eda_conf:
+      n_units: 256
+      encoder_dropout: 0.1
+      decoder_dropout: 0.1
+
+    attractor_loss_weight: 1.0
+    n_units: 256
+    TOLD_part: true
+
+  soap:
+
+    soap_encoder_conf:
+      pooling_type: "window_shift"
+      pool_size: 20
+      stride: 1
+
+    ci_conf:
+      in_channels: 512
+      n_units: 512
+      n_layers: 3
+      dropout_rate: 0.0
+
+    cd_conf:
+      in_channels: 512
+      h: 4
+      pff_channels: 1024
+      n_layers: 4
+      dropout_rate: 0.0
+
+    guidance_loss_weight: 0.1
